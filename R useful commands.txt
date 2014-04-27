@@ -1,0 +1,8 @@
+subsetting two ways
+
+statesInfo <- read.csv("stateData.csv")
+
+selet rows for which state.region is 1
+
+subset(statesInfo, state.region==1)
+statesInfo[statesInfo$state.region==1, ]
