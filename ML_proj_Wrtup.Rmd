@@ -1,0 +1,73 @@
+## Human Activity Recognition
+========================================================
+
+
+```{r}
+library(rpart)
+library(caret)
+pml.training <- read.csv("C:/coursera/machine_Learning/Project/pml-training.csv")
+pml.testing <- read.csv("C:/coursera/machine_Learning/Project/pml-testing.csv")
+```
+# Keep only the variables associated with accelerometers on the belt, forearm, arm, and dumbell.  
+```{r}
+training_pml <- pml.training[,c('accel_belt_x','accel_belt_y','accel_belt_z','accel_arm_x','accel_arm_y','accel_arm_z','accel_dumbbell_x','accel_dumbbell_y','accel_dumbbell_z','accel_forearm_x','accel_forearm_y','accel_forearm_z','classe')]
+testing_pml <- pml.testing[,c('accel_belt_x','accel_belt_y','accel_belt_z','accel_arm_x','accel_arm_y','accel_arm_z','accel_dumbbell_x','accel_dumbbell_y','accel_dumbbell_z','accel_forearm_x','accel_forearm_y','accel_forearm_z','problem_id')]
+```
+# In order to minimise number of predictors Test for highlly correlated variables .
+```{r}
+corr_pml <- cor(training_pml[, -13])
+highCorr <- findCorrelation(corr_pml, 0.90)
+highCorr
+training_pml_uncrl <- training_pml[,-highCorr ]
+testing_pml_uncrl <- testing_pml[, -highCorr]
+```
+# Inspecting model based on rpart function
+```{r}
+summary (training_pml)
+tc <- trainControl("cv",10)
+rpart.grid <- expand.grid(.cp=0.2)
+modfit_pm_rpart <- train(classe ~.,method = 'rpart', data = training_pml_uncrl,trControl=tc,tuneGrid=rpart.grid)
+
+modfit_pm_rpart
+```
+# The rpart model has very low accuracy. Hence it cannot be used for prediction.
+
+Inspect rf model on small sample of training data 20%, due mainlly to memory limit.
+```{r}
+inTrain_pml_2 <- createDataPartition(y=training_pml_uncrl$classe, p=0.2, list=FALSE)
+training_pml_2  <- training_pml_uncrl[inTrain_pml_2,]
+
+modFitRF_pml_2 <- train(classe~., data= training_pml_2, method ="rf", prox=TRUE)
+modFitRF_pml_2
+```
+# Sample validation data for confusion matrix evaluation.  
+# In order to avoid using same observation in training and Validation I only used the data that was not used for training
+```{r}
+valid_pml  <- training_pml_uncrl[-inTrain_pml_2,]
+
+#the data in the validation size is limited to 0.8*0.1 = 0.08 % of the original trining data set
+invalid_pml_2 <- createDataPartition(y=valid_pml$classe, p=0.1, list=FALSE)
+valid_pml_2 <- valid_pml[invalid_pml_2,]
+```
+# Inspect the confusion Matrix.
+```{r}
+valid_pml_2$Prediction <- predict(modFitRF_pml_2, newdata=valid_pml_2)
+confusionMatrix(data=valid_pml_2$Prediction, valid_pml_2$classe)
+```
+# Aplly the predictor model to new data given in the test dataset
+```{r}
+pred_pml <- predict(modFitRF_pml_2,testing_pml_uncrl )
+pred_pml
+```
+# Attach predicted values to the test dataset
+```{r}
+testing_pml_uncrl_2 <- testing_pml_uncrl
+testing_pml_uncrl_2$pred_class <- pred_pml
+#view newe predicted value and row identifier. Needed for the submission part of the course project assignement
+testing_pml_uncrl_2[c(12,13)]
+```
+
+```{r}
+
+```
+
